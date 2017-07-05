@@ -29,6 +29,7 @@ class ChocolatesOfTheWorldViewController: UIViewController {
   @IBOutlet private var cartButton: UIBarButtonItem!
   @IBOutlet private var tableView: UITableView!
   let europeanChocolates = Chocolate.ofEurope
+  let disposeBag = DisposeBag()
   
   //MARK: View Lifecycle
   
@@ -38,20 +39,22 @@ class ChocolatesOfTheWorldViewController: UIViewController {
 
     tableView.dataSource = self
     tableView.delegate = self
-  }
-  
-  override func viewWillAppear(_ animated: Bool) {
-    super.viewWillAppear(animated)
-    updateCartButton()
+    setupCartObserver()
   }
   
   //MARK: Rx Setup
   
-  
-  //MARK: Imperative methods
-  
-  func updateCartButton() {
-    cartButton.title = "\(ShoppingCart.sharedCart.chocolates.count) 🍫"
+  private func setupCartObserver() {
+    // Grab chocolates variable as observable
+    // We call subscribe(onNext:) in order to find out about changes to the Observable's values subscribe(onNext:) accepts a closure that will be executed every time a value changes
+    // Incoming parameter to the closure is the new value of Observable, we'll keep getting notifications until unsubscribing or subscription is disposed
+    // We get back an Observer conforming Disposable
+    // Add Observer to disposebag to ensure subscription is disposed of when unsubscribing object is deallocated
+    ShoppingCart.sharedCart.chocolates.asObservable()
+      .subscribe(onNext: { chocolates in
+      self.cartButton.title = "\(chocolates.count) \u{1f36b}"
+    })
+    .addDisposableTo(disposeBag)
   }
 }
 
@@ -90,8 +93,7 @@ extension ChocolatesOfTheWorldViewController: UITableViewDelegate {
     tableView.deselectRow(at: indexPath, animated: true)
     
     let chocolate = europeanChocolates[indexPath.row]
-    ShoppingCart.sharedCart.chocolates.append(chocolate)
-    updateCartButton()
+    ShoppingCart.sharedCart.chocolates.value.append(chocolate)
   }
 }
 
